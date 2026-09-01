@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ERP Top Consult</title>
+  <style>
+    html, body, #root { height: 100%; margin: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    #boot { display:flex; height:100vh; align-items:center; justify-content:center; color:#6B7480; font-size:14px; }
+  </style>
+</head>
+<body>
+  <div id="root"><div id="boot">Cargando el sistema...</div></div>
+
+  <!-- window.storage respaldado por el backend Spring Boot (persistencia real en H2) -->
+  <script>
+    window.storage = {
+      async get(key) {
+        const r = await fetch('/api/storage/' + encodeURIComponent(key));
+        if (r.status === 404) return null;
+        if (!r.ok) throw new Error('storage.get ' + r.status);
+        return await r.json();
+      },
+      async set(key, value) {
+        const r = await fetch('/api/storage/' + encodeURIComponent(key), {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ value })
+        });
+        if (!r.ok) throw new Error('storage.set ' + r.status);
+        return await r.json();
+      },
+      async delete(key) {
+        const r = await fetch('/api/storage/' + encodeURIComponent(key), { method: 'DELETE' });
+        if (!r.ok && r.status !== 404) throw new Error('storage.delete ' + r.status);
+        return { key, deleted: true };
+      },
+      async list(prefix) {
+        const r = await fetch('/api/storage?prefix=' + encodeURIComponent(prefix || ''));
+        if (!r.ok) throw new Error('storage.list ' + r.status);
+        return await r.json();
+      }
+    };
+  </script>
+
+  <!-- Carga cada libreria: primero local (offline), si falta usa el CDN (necesita internet) -->
+  <script>
+    function loadScript(urls) {
+      return new Promise(function (resolve, reject) {
+        var i = 0;
+        (function attempt() {
+          if (i >= urls.length) { reject(new Error('No se pudo cargar: ' + urls[urls.length - 1])); return; }
+          var s = document.createElement('script');
+          s.src = urls[i++];
+          s.onload = function () { resolve(); };
+          s.onerror = function () { attempt(); };
+          document.head.appendChild(s);
+        })();
+      });
+    }
+
+    (async function () {
+      try {
+        await loadScript(['vendor/tailwind.js', 'https://cdn.tailwindcss.com']);
+        await loadScript(['vendor/react.production.min.js', 'https://unpkg.com/react@18.2.0/umd/react.production.min.js']);
+        await loadScript(['vendor/react-dom.production.min.js', 'https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js']);
+        await loadScript(['vendor/recharts.min.js', 'https://unpkg.com/recharts@2.12.7/umd/Recharts.js']);
+        await loadScript(['vendor/lucide-react.min.js', 'https://unpkg.com/lucide-react@0.383.0/dist/umd/lucide-react.js']);
+        await loadScript(['vendor/babel.min.js', 'https://unpkg.com/@babel/standalone@7/babel.min.js']);
+
+        window.LucideReact = window.LucideReact || window.lucideReact || window.lucide;
+        window.Recharts = window.Recharts || window.recharts;
+
+        if (!window.React || !window.ReactDOM || !window.Recharts || !window.LucideReact || !window.Babel) {
+          throw new Error('No se pudieron cargar las librerias (ni local ni por internet).');
+        }
+
+        var src = await (await fetch('app.jsx')).text();
+        var out = Babel.transform(src, { presets: ['react'], filename: 'app.jsx' }).code;
+        var s = document.createElement('script');
+        s.textContent = out;
+        document.body.appendChild(s);
+      } catch (e) {
+        document.getElementById('root').innerHTML =
+          '<pre style="padding:24px;color:#b00;white-space:pre-wrap;font-family:monospace">' +
+          'No se pudo iniciar la app.\n\n' + (e && e.message ? e.message : e) +
+          '\n\nOpciones:\n' +
+          ' - Conectate a internet y recarga (usa CDNs), o\n' +
+          ' - Deja todo offline ejecutando una vez el script de descarga:\n' +
+          '     Windows:      powershell -ExecutionPolicy Bypass -File download-libs.ps1\n' +
+          '     Mac / Linux:  bash download-libs.sh' +
+          '</pre>';
+        console.error(e);
+      }
+    })();
+  </script>
+</body>
+</html>

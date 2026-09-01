@@ -1,0 +1,14 @@
+Esta carpeta se llena automaticamente al ejecutar (una vez, con internet):
+
+  Windows:      powershell -ExecutionPolicy Bypass -File download-libs.ps1
+  Mac / Linux:  bash download-libs.sh
+
+Deberian quedar estos archivos:
+  - react.production.min.js
+  - react-dom.production.min.js
+  - recharts.min.js
+  - lucide-react.min.js
+  - babel.min.js
+  - tailwind.js
+
+Despues de eso, la aplicacion funciona sin conexion a internet.
